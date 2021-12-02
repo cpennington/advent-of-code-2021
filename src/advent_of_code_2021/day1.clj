@@ -3,18 +3,52 @@
    [advent-of-code-2021.core :as core]
    [clojure.string :as str]))
 
+(defn window
+  [n coll]
+  (partition n 1 coll))
+
 (defn count-increasing
   [numbers]
-  (reduce (fn [[last count] next]
-            [next (if (and (some? last ) (> next last)) (+ count 1) count)]) [nil 0] numbers))
+  (->> numbers
+       (window 2)
+       (map (partial apply <))
+       (filter identity)
+       (count)))
+
+(def input (->> (core/get-input 1)
+                (str/split-lines)
+                (map #(Integer/parseInt %))))
 
 (defn do-1
-  []
-  (let [input (core/get-input 1 "1.txt")
-        numbers (->> (str/split-lines input)
-                     (map #(Integer/parseInt %)))]
-    (count-increasing numbers)))
+  ([]
+   (do-1 input))
+  ([numbers]
+   (count-increasing numbers)))
+
+(defn do-2
+  ([]
+  (do-2 input))
+  ([numbers]
+   (->> numbers
+        (window 3)
+        (map (partial apply +))
+        (map #(/ % 3))
+        (count-increasing))))
 
 (comment
-  (prn (do-1)))
+  (prn (do-1))
+  (do-2 [199
+         200
+         208
+         210
+         200
+         207
+         240
+         269
+         260
+         263])
+
+  (->> [0 1 2]
+       (window 2)
+       (map (partial apply <))))
 

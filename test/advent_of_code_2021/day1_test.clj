@@ -15,12 +15,12 @@
 
 (deftest task-1
   (testing "Solution"
-    (is (= (do-1) 1446)))
+    (is (= 1446 (do-1) )))
   (testing "Example 1"
-    (is (= (do-1 sample) 7))))
+    (is (= 7 (do-1 sample)))))
 
 (deftest task-2
   (testing "Solution"
-    (is (= (do-2) 1486)))
+    (is (= 1486 (do-2))))
   (testing "Sample"
-    (is (= (do-2 sample) 5))))
+    (is (= 5 (do-2 sample)))))

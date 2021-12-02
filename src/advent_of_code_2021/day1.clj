@@ -14,7 +14,7 @@
        (filter identity)
        (count)))
 
-(def input (core/input->numbers (core/get-input 1)))
+(def input (core/get-input 1))
 
 (defn do-1
   ([]

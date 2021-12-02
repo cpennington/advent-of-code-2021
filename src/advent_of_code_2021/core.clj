@@ -1,13 +1,10 @@
 (ns advent-of-code-2021.core
    (:require
-    [clojure.string :as str]))
+    [clojure.edn :as edn]))
 
 (defn get-input
   [day]
-  (slurp (str "resources/inputs/day" day ".txt")))
-
-(defn input->numbers
-  [input]
-  (->> input
-       (str/split-lines)
-       (map #(Integer/parseInt %))))
+  (->> (str "resources/inputs/day" day ".txt")
+      slurp
+      (format "[%s]")
+      edn/read-string))

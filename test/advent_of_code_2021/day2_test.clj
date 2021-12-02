@@ -3,25 +3,12 @@
             [clojure.string :as str]
             [advent-of-code-2021.day2 :refer :all]))
 
-(def sample [[:forward 5]
-             [:down 5]
-             [:forward 8]
-             [:up 3]
-             [:down 8]
-             [:forward 2]])
-
-(def sample-input (str/join
-                   "\n"
-                   ["forward 5"
-                    "down 5"
-                    "forward 8"
-                    "up 3"
-                    "down 8"
-                    "forward 2"]))
-
-(deftest input-test
-  (testing "Sample"
-    (is (= sample (input->commands sample-input)))))
+(def sample '[forward 5
+              down 5
+              forward 8
+              up 3
+              down 8
+              forward 2])
 
 (deftest task-1
   (testing "Solution"

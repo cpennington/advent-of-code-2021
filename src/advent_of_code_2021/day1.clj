@@ -1,7 +1,6 @@
 (ns advent-of-code-2021.day1
   (:require
-   [advent-of-code-2021.core :as core]
-   [clojure.string :as str]))
+   [advent-of-code-2021.core :as core]))
 
 (defn window
   [n coll]
@@ -15,9 +14,7 @@
        (filter identity)
        (count)))
 
-(def input (->> (core/get-input 1)
-                (str/split-lines)
-                (map #(Integer/parseInt %))))
+(def input (core/input->numbers (core/get-input 1)))
 
 (defn do-1
   ([]
@@ -47,6 +44,7 @@
          269
          260
          263])
+  (do-2)
 
   (->> [0 1 2]
        (window 2)

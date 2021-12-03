@@ -1,7 +1,7 @@
 (ns advent-of-code-2021.day2
   (:require
    [advent-of-code-2021.core :as core]))
-(def input (core/get-input 2))
+(def input (core/get-input-as-edn 2))
 
 (defn process-command-1
   [[pos depth] [command value]]
@@ -38,5 +38,5 @@
 
 (comment
   (->> '[forward 5 down 5 forward 8 up 3 down 8 forward 2] (partition 2) (reduce process-command-2 [0 0 0]))
-  (do-1 [forward 4])
+  (do-1 '[forward 4])
   )

@@ -5,6 +5,10 @@
 (defn get-input
   [day]
   (->> (str "resources/inputs/day" day ".txt")
-      slurp
-      (format "[%s]")
-      edn/read-string))
+       slurp))
+
+(defn get-input-as-edn
+  [day]
+  (->> (get-input day)
+       (format "[%s]")
+       edn/read-string))

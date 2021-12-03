@@ -14,7 +14,7 @@
        (filter identity)
        (count)))
 
-(def input (core/get-input 1))
+(def input (core/get-input-as-edn 1))
 
 (defn do-1
   ([]

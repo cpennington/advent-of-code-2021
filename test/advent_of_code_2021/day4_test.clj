@@ -1,6 +1,6 @@
 (ns advent-of-code-2021.day4-test
-  (:require [clojure.test :refer :all]
-            [advent-of-code-2021.day4 :refer :all]))
+  (:require [clojure.test :refer [deftest testing is]]
+            [advent-of-code-2021.day4 :refer [do-1 do-2 sample]]))
 
 (deftest task-1
   (testing "Sample"

@@ -1,7 +1,6 @@
 (ns advent-of-code-2021.day3-test
-  (:require [clojure.test :refer :all]
-            [clojure.string :as str]
-            [advent-of-code-2021.day3 :refer :all]))
+  (:require [clojure.test :refer [deftest testing is]]
+            [advent-of-code-2021.day3 :refer [do-1 do-2]]))
 
 (def sample '["00100"
               "11110"

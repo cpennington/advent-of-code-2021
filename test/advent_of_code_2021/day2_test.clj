@@ -1,7 +1,6 @@
 (ns advent-of-code-2021.day2-test
-  (:require [clojure.test :refer :all]
-            [clojure.string :as str]
-            [advent-of-code-2021.day2 :refer :all]))
+  (:require [clojure.test :refer [deftest testing is]]
+            [advent-of-code-2021.day2 :refer [do-1 do-2]]))
 
 (def sample '[forward 5
               down 5

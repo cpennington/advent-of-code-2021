@@ -7,8 +7,12 @@
   (->> (str "resources/inputs/day" day ".txt")
        slurp))
 
-(defn get-input-as-edn
-  [day]
-  (->> (get-input day)
+(defn string->edn
+  [str]
+  (->> str
        (format "[%s]")
        edn/read-string))
+
+(defn get-input-as-edn
+  [day]
+  (string->edn (get-input day)))

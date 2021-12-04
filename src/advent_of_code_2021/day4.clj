@@ -103,14 +103,14 @@
    (do-2 input))
   ([input]
      (->> (iterate step-boards input)
-          (remove (fn [state] (-> state :boards not-empty)))
+          (remove (comp seq :boards))
           first
           ((fn [state] (* (-> state :done last) (-> state :complete last score-board)))))))
 
 (comment
   (do-2 sample)
   (->> (iterate step-boards sample)
-       (remove (fn [state] (-> state :boards not-empty)))
+       (remove (fn [state] (-> state :boards seq)))
        first)
   (into [] [[] ()]))
   

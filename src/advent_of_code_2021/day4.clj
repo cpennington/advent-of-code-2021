@@ -75,11 +75,11 @@
 (defn step-boards
   [{:keys [boards complete done moves] :or {boards [] complete [] done [] moves []}} ]
   (let [[next & rest] moves
-        next-boards (map (partial mark-board next) boards)
-        unfinished (remove finished? next-boards)
-        finished (filter finished? next-boards)]
+        {unfinished false finished true} (->> boards
+                                              (map (partial mark-board next))
+                                              (group-by finished?))]
     {:boards unfinished
-     :complete (concat complete finished)
+     :complete (into complete finished)
      :done (conj done next)
      :moves rest}))
 

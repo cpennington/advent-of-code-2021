@@ -23,7 +23,6 @@
       (map #(nth board %))
       set))
 
-
 (defn board->line-sets
   [board]
   (->> line-indexes
@@ -73,69 +72,45 @@
        (some (partial = 0))
        true?))
 
+(defn step-boards
+  [{:keys [boards complete done moves] :or {boards [] complete [] done [] moves []}} ]
+  (let [[next & rest] moves
+        next-boards (map (partial mark-board next) boards)
+        unfinished (remove finished? next-boards)
+        finished (filter finished? next-boards)]
+    {:boards unfinished
+     :complete (concat complete finished)
+     :done (conj done next)
+     :moves rest}))
+
+(defn score-board
+  [board]
+  (->> (apply set/union board)
+       (apply +)))
+
 (defn do-1
   ([]
    (do-1 input))
-  ([{:keys [moves boards]}]
-   (loop [[next-move & rest-moves] moves
-          boards boards]
-     (let [next-boards (map (partial mark-board next-move) boards)
-           first-finished (->> next-boards
-                               (filter finished?)
-                               first)]
-       (if first-finished
-         (->> (apply set/union first-finished)
-              (apply +)
-              (* next-move))
-           (recur rest-moves next-boards))))))
--
+  ([input]
+   (->> (iterate step-boards input)
+        (filter (comp seq :complete))
+        first
+        ((fn [state] (* (-> state :done last) (-> state :complete first score-board))))
+        )))
+
 (defn do-2
   ([]
    (do-2 input))
-  ([{:keys [moves boards]}]
-   (loop [[next-move & rest-moves] moves
-          boards boards]
-     (let [next-boards (map (partial mark-board next-move) boards)
-           unfinished (->> next-boards
-                           (filter (comp not finished?)))]
-       (if (empty? unfinished)
-         (->> (first next-boards)
-              (apply set/union)
-              (apply +)
-              (* next-move))
-         (recur rest-moves unfinished))))))
+  ([input]
+     (->> (iterate step-boards input)
+          (remove (fn [state] (-> state :boards not-empty)))
+          first
+          ((fn [state] (* (-> state :done last) (-> state :complete last score-board)))))))
 
 (comment
-  (board->line-sets  [14 21 17 24  4
-                      10 16 15  9 19
-                      18  8 23 26 20
-                      22 11 13  6  5
-                      2  0 12  3  7])
-  input
-  (->> (parse-input sample)
-      :boards
-      first
-      (mark-board 0)
-       finished?)
-  (last sample)
-  (->> (last sample)
-       (partition 25)
-       (#(nth % 2))
-       board->line-sets)
-  (-> (core/get-input 4)
-      ((fn [input] (str/split input #"\n" 2))))
-  sample
-  (let [[next-move rest-moves] (:moves sample)
-        boards (:boards sample)
-        next-boards (map (partial mark-board next-move) boards)
-        first-finished (->> next-boards
-                            (filter finished?)
-                            first)]
-    (prn next-move rest-moves boards next-boards first-finished)
-    (if first-finished
-      (->> (into hash-set first-finished)
-           (apply +)
-           (* next-move))
-      (prn rest-moves next-boards)))
-  )
-
+  (do-2 sample)
+  (->> (iterate step-boards sample)
+       (remove (fn [state] (-> state :boards not-empty)))
+       first)
+  (into [] [[] ()]))
+  

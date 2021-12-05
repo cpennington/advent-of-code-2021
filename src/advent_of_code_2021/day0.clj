@@ -2,6 +2,7 @@
   (:require
    [advent-of-code-2021.core :as core]))
 
+(def sample nil)
 (def input (core/get-input-as-edn 1))
 
 (defn do-1

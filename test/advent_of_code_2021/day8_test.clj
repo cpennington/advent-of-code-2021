@@ -8,8 +8,8 @@
   (testing "Solution"
     (is (= 344 (do-1) ))))
 
-(deftest task-2
-  (testing "Sample"
-    (is (= 61229 (do-2 sample))))
-  (testing "Solution"
-    (is (= nil (do-2)))))
+;; (deftest task-2
+;;   (testing "Sample"
+;;     (is (= 61229 (do-2 sample))))
+;;   (testing "Solution"
+;;     (is (= 1048410 (do-2)))))

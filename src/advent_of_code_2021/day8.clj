@@ -25,7 +25,10 @@
 
 (defn off
   [seg ex]
-;;   (lg/membero seg (vec (set/difference all-letters (set ex))))
+  (lg/membero seg (vec (set/difference all-letters (set ex)))))
+
+(defn na
+  [_ _]
   lg/succeed)
 
 ;;   1 1
@@ -48,28 +51,37 @@
    [1 2 3 4 5 6 7] 8
    [1 2 3 4 6 7] 9})
 
-(def one [off off on off off on off])
-(def two [on off on on on off on])
-(def three [on off on on off on on])
-(def four [off on on on off on off])
-(def five [on on off on off on on])
-(def six [on on off on on on on])
-(def seven [on off on off off on off])
-(def eight [on on on on on on on])
-(def nine [on on on on off on on])
-(def zero [on on on off on on on])
+(def one   [off na  on  na  na  on  na])
+(def two   [na  off na  na  na  off na])
+(def three [na  off na  na  off na  na])
+(def four  [off na  na  na  off na  off])
+(def five  [na  na  off na  off na  na])
+(def six   [na  na  off na  na  na  na])
+(def seven [on  na  on  na  na  on  na])
+(def eight [na  na  na  na  na  na  na])
+(def nine  [na  na  na  na  off na  na])
+(def zero  [na  na  na  off na  na  na])
 
 (defn is
   [digit segs ex]
-  (if (= (->> digit (filter #{on}) count) (count ex))
+  ;; (if (= (->> digit (filter #{on}) count) (count ex))
     (lg/and* (mapv #(%1 %2 ex) digit segs))
-    lg/fail))
+    ;; lg/fail)
+)
 
 (defn some-digit
   [segs ex]
-  (lg/or* (mapv #(is % segs ex)
-                (filter #(= (->> % (filter #{on}) count) (count ex))
-                        [one two three four five six seven eight nine zero]))))
+  (lg/or* (mapv #(is % segs ex) (case (count ex)
+                                  2 [one]
+                                  3 [seven]
+                                  4 [four]
+                                  5 [two three five]
+                                  6 [six nine zero]
+                                  7 [eight])
+                ;; (filter #(= (->> % (filter #{on}) count) (count ex))
+                        ;; [one two three four five six seven eight nine zero]
+                        ;; )
+                )))
 
 (defn segments
   [examples]
@@ -77,7 +89,10 @@
     (lg/run 1 [q]
             (lg/distincto segs)
             (lg/== q segs)
-            (lg/and* (mapv #(some-digit segs %) (sort-by count examples))))))
+            (lg/and* (mapv #(some-digit segs %) (sort-by
+                                                 #(min (count %) (- 7 (count %)))
+                                                ;;  count
+                                                 examples))))))
 
 (defn solve-line
   [[input output]]
@@ -134,6 +149,6 @@
     (lg/run 5 [q]
             (lg/== q segs)
             (lg/== q [\a \c \b \d \f \e \g])
-            (is one segs "be")))
+            (is two segs "abcde")))
   (time (do-2 sample)))
 

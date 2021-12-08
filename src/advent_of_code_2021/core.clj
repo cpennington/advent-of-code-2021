@@ -7,6 +7,11 @@
   (->> (str "resources/inputs/day" day ".txt")
        slurp))
 
+(defn get-sample
+  [day]
+  (->> (str "resources/inputs/day" day ".sample.txt")
+       slurp))
+
 (defn string->edn
   [str]
   (->> str

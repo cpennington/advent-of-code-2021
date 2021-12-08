@@ -25,7 +25,8 @@
 
 (defn off
   [seg ex]
-  (lg/membero seg (vec (set/difference all-letters (set ex)))))
+;;   (lg/membero seg (vec (set/difference all-letters (set ex))))
+  lg/succeed)
 
 ;;   1 1
 ;; 2     3
@@ -66,7 +67,9 @@
 
 (defn some-digit
   [segs ex]
-  (lg/or* (mapv #(is % segs ex) [one two three four five six seven eight nine zero])))
+  (lg/or* (mapv #(is % segs ex)
+                (filter #(= (->> % (filter #{on}) count) (count ex))
+                        [one two three four five six seven eight nine zero]))))
 
 (defn segments
   [examples]
@@ -74,7 +77,7 @@
     (lg/run 1 [q]
             (lg/distincto segs)
             (lg/== q segs)
-            (lg/and* (mapv #(some-digit segs %) examples)))))
+            (lg/and* (mapv #(some-digit segs %) (sort-by count examples))))))
 
 (defn solve-line
   [[input output]]
@@ -131,5 +134,6 @@
     (lg/run 5 [q]
             (lg/== q segs)
             (lg/== q [\a \c \b \d \f \e \g])
-            (is one segs "be"))))
+            (is one segs "be")))
+  (time (do-2 sample)))
 

@@ -150,5 +150,5 @@
             (lg/== q segs)
             (lg/== q [\a \c \b \d \f \e \g])
             (is two segs "abcde")))
-  (time (do-2 sample)))
+  (time (do-2 input)))
 

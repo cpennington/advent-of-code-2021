@@ -12,4 +12,4 @@
   (testing "Sample"
     (is (= 288957 (do-2 sample))))
   (testing "Solution"
-    (is (= nil (do-2)))))
+    (is (= 3646451424 (do-2)))))

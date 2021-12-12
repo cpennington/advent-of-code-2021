@@ -1,64 +1,30 @@
 (ns advent-of-code-2021.day9
   (:require
    [advent-of-code-2021.core :as core]
-   [clojure.string :as str]
+   [advent-of-code-2021.grid :as grid]
    [clojure.set :as set]))
 
-(defn parse-input
-  [input]
-  (->> input
-      str/split-lines
-      (mapv (partial mapv #(Character/digit % 10)))))
-
-(def sample (parse-input (core/get-sample 9)))
-(def input (parse-input (core/get-input 9)))
-
-(defn in-bounds
-  [input [r c]]
-  (and (<= 0 r)
-       (<= 0 c)
-       (< r (count input))
-       (< c (count (first input)))))
-
-(defn lookup
-  [input [r c]]
-  (when (in-bounds input [r c])
-    (-> input
-        (nth r)
-        (nth c))))
-
-
-(defn neighbors
-  [input [r c]]
-  (filterv #(in-bounds input %)
-           [[(dec r) c]
-            [(inc r) c]
-            [r (dec c)]
-            [r (inc c)]]))
-
-(defn lookup-neighbors
-  [input pt]
-  (->> (neighbors input pt)
-       (map #(lookup input %))))
+(def sample (grid/parse-input (core/get-sample 9)))
+(def input (grid/parse-input (core/get-input 9)))
 
 (defn low-points
   [input]
   (for [r (-> input count range)
         c (-> input first count range)
-        :let [v (lookup input [r c])
-              ns (lookup-neighbors input [r c])]
+        :let [v (grid/lookup input [r c])
+              ns (grid/lookup-neighbors input [r c])]
         :when (every? #(< v %) ns)]
     [r c]))
 
 (defn expand-basin
   [{:keys [input basin boundary] :or {basin #{}}}]
   (let [new-boundary (->> boundary
-                          (map #(neighbors input %))
+                          (map #(grid/neighbors input %))
                           (apply concat)
                           set
                           (#(set/difference % basin))
                           (filter #(->> %
-                                        (lookup input)
+                                        (grid/lookup input)
                                         (> 9)))
                           set
                           )
@@ -73,7 +39,7 @@
   ([input]
    (->> input
         low-points
-        (map #(lookup input %))
+        (map #(grid/lookup input %))
         (map inc)
         (reduce +))))
 
@@ -94,7 +60,7 @@
         )))
 
 (comment
-  (neighbors input [0 9])
+  (grid/neighbors input [0 9])
   (apply set [])
   (set [[1 2] [2 3]])
   (expand-basin {:input sample :boundary #{[0 9]}})

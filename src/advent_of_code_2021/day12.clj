@@ -20,7 +20,7 @@
 
 (defn extend-path
   [graph {:keys [path visited] :or {visited #{}}}]
-  (let [next-caves (get graph (last path))]
+  (let [next-caves (get graph (peek path))]
     (if (seq next-caves)
       (->> next-caves
            (remove visited)
@@ -34,17 +34,18 @@
 
 (defn path-complete?
   [{:keys [path]}]
-  (-> path last (= "end")))
+  (-> path peek (= "end")))
 
 (defn extend-paths
   [{:keys [graph paths complete-paths] :or {paths [{:path ["start"] :visited #{"start"}}]}}]
   (let [new-paths (->> paths
-                       (mapv (partial extend-path graph))
+                       (map (partial extend-path graph))
                        (apply concat)
-                       (into []))]
+                       (into []))
+        {complete true incomplete false} (group-by path-complete? new-paths)]
     {:graph graph
-     :paths (into [] (remove path-complete? new-paths))
-     :complete-paths (into complete-paths (filter path-complete? new-paths))}))
+     :paths (into [] incomplete)
+     :complete-paths (into complete-paths complete)}))
 
 (def tiny-sample (parse-input "start-A
 start-b
@@ -146,7 +147,7 @@ start-RW"))
        (take 100)
        (drop-while #(->> %
                          :paths
-                         (not-every? (comp (partial = "end") last :path))))
+                         (not-every? (comp (partial = "end") peek :path))))
        (map :paths)
        first
        (map :path)
@@ -159,7 +160,7 @@ start-RW"))
                                              (remove #{"start" "end"})
                                              (remove  (comp not small-cave?))
                                              (map #(assoc sample (str % \') (get sample %))))
-  (->> input
+  (->> tiny-sample
        double-small-caves
        (map all-paths)
       ;;  (apply concat)
@@ -168,16 +169,25 @@ start-RW"))
       ;;  count
        )
 
-  (all-paths {:graph med-sample})
-  (-> {:graph med-sample}
-      extend-paths
-      extend-paths
-      extend-paths
-      extend-paths
-      extend-paths
-      extend-paths
-      :complete-paths)
-  (do-2 med-sample)
+  med-sample
+  (all-paths med-sample)
+  (->> {:graph med-sample}
+       (iterate extend-paths)
+       (drop 1)
+       (take 100)
+       (drop-while #(->> %
+                         :paths
+                         seq))
+       first
+       :complete-paths
+       (mapv :path)
+       (mapv #(str/join "," %))
+       sort)
+  (do-2 input)
   (path-complete? {:path ["start" "dc"], :visited #{"dc" "start"}})
+  (require '[clj-async-profiler.core :as prof])
+  (prof/profile (dotimes [i 10] (do-2 input)))
+  (prof/serve-files 8080)
+
   )
 

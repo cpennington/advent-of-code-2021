@@ -5,6 +5,8 @@
             :url "https://www.eclipse.org/legal/epl-2.0/"}
   :dependencies [[org.clojure/clojure "1.10.1"]
                  [lambdaisland/kaocha "1.60.945"]
-                 [org.clojure/core.logic "1.0.0"]]
+                 [org.clojure/core.logic "1.0.0"]
+                 [com.clojure-goes-fast/clj-async-profiler "0.5.1"]]
   :repl-options {:init-ns advent-of-code-2021.core}
-  :aliases {"kaocha" ["run" "-m" "kaocha.runner"]})
+  :aliases {"kaocha" ["run" "-m" "kaocha.runner"]}
+  :jvm-opts ["-Djdk.attach.allowAttachSelf"])

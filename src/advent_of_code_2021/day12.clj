@@ -32,13 +32,20 @@
       [{:path path
         :visited visited}])))
 
+(defn path-complete?
+  [{:keys [path]}]
+  (-> path last (= "end")))
+
 (defn extend-paths
-  [{:keys [graph paths] :or {paths [{:path ["start"] :visited #{"start"}}]}}]
-  {:graph graph
-   :paths (->> paths
-               (mapv (partial extend-path graph))
-               (apply concat)
-               (into []))})
+  [{:keys [graph paths complete-paths] :or {paths [{:path ["start"] :visited #{"start"}}]}}]
+  (let [new-paths (->> paths
+                       (mapv (partial extend-path graph))
+                       (apply concat)
+                       (into []))]
+    {:graph graph
+     :paths (into [] (remove path-complete? new-paths))
+     :complete-paths (into complete-paths (filter path-complete? new-paths))}))
+
 (def tiny-sample (parse-input "start-A
 start-b
 A-c
@@ -84,9 +91,9 @@ start-RW"))
        (take 100)
        (drop-while #(->> %
                          :paths
-                         (not-every? (comp (partial = "end") last :path))))
-       (mapv :paths)
+                         seq))
        first
+       :complete-paths
        (mapv :path)
        (mapv #(str/join "," %))
        sort))
@@ -160,7 +167,17 @@ start-RW"))
       ;;  set
       ;;  count
        )
-  
+
+  (all-paths {:graph med-sample})
+  (-> {:graph med-sample}
+      extend-paths
+      extend-paths
+      extend-paths
+      extend-paths
+      extend-paths
+      extend-paths
+      :complete-paths)
   (do-2 med-sample)
+  (path-complete? {:path ["start" "dc"], :visited #{"dc" "start"}})
   )
 

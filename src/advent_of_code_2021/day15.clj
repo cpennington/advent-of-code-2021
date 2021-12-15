@@ -17,34 +17,34 @@
 (def input (grid/parse-input (core/get-input 15)))
 
 (defn path-cost*
-  [costs [tr tc] path {:keys [actual]} [r c]]
-  (let [new-actual (+ actual (grid/lookup costs [r c]))]
-    [(conj path [r c])
-     {:actual new-actual
-      :est (+ (- tr r) (- tc c) new-actual)}]))
-
-(defn keyfn*
-  [cost]
-  (apply + (vals cost)))
+  [costs frontier [tr tc] {:keys [actual path]} [r c]]
+  (let [new-actual (+ actual (grid/lookup costs [r c]))
+        prior-cost (get frontier [r c])]
+    [[r c]
+     (if (or (nil? prior-cost)
+             (< new-actual (:actual prior-cost)))
+       {:actual new-actual
+       :est (+ (- tr r) (- tc c) new-actual)
+       :path (conj path [r c])}
+       prior-cost)]))
 
 (defn explore-next
   [{:keys [costs target frontier visited found] :as state}]
-  (let [[path path-cost] (peek frontier)
+  (let [[pt pt-cost] (peek frontier)
         rest-frontier (when (seq frontier) (pop frontier))
-        end-pt (peek path)
-        next-pts (remove visited (grid/neighbors costs end-pt))
-        next-paths (mapv #(path-cost* costs target path path-cost %) next-pts)
-        next-frontier (into rest-frontier next-paths)]
+        neighbors (remove visited (grid/neighbors costs pt))
+        next-pts (map #(path-cost* costs frontier target pt-cost %) neighbors)
+        next-frontier (into rest-frontier next-pts)]
     ;; (prn path end-pt)
     (assoc state
            :frontier next-frontier
-           :visited (conj visited end-pt)
-           :found (into found (filter (fn [[_ cost]] (= (:actual cost) (:est cost))) next-paths)))))
+           :visited (conj visited pt)
+           :found (into found (filter (fn [[_ cost]] (= (:actual cost) (:est cost))) next-pts)))))
 
 (defn setup
   [input]
   {:costs input
-   :frontier (priority-map-keyfn :est [[0 0]] {:actual 0})
+   :frontier (priority-map-keyfn :est [0 0] {:actual 0})
    :visited #{}
    :found []
    :target (mapv dec (:bounds input))})
@@ -98,6 +98,9 @@
   sample
   (riskier sample 5)
   (grid/neighbors sample [0 0])
+  (->> sample
+       setup
+       explore-next)
   (->> sample
        setup
        (iterate explore-next)

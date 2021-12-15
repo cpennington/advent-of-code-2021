@@ -34,15 +34,15 @@
 
 (defn neighbors
   [grid [r c]]
-  (filterv #(in-bounds grid %)
-           [[(dec r) c]
-            [(inc r) c]
-            [r (dec c)]
-            [r (inc c)]]))
+  (filter #(in-bounds grid %)
+          [[(dec r) c]
+           [(inc r) c]
+           [r (dec c)]
+           [r (inc c)]]))
 
 (defn dneighbors
   [grid [r c]]
-  (filterv #(in-bounds grid %)
+  (filter #(in-bounds grid %)
            [[(dec r) (dec c)]
             [(dec r) c]
             [(dec r) (inc c)]

@@ -8,31 +8,37 @@
        (mapv str/trim)
        (mapv (partial mapv #(Character/digit % 10)))))
 
+(defn bounds
+  [grid]
+  {:rows (count grid)
+   :cols (count (first grid))})
+
 (defn in-bounds
-  [input [r c]]
-  (and (<= 0 r)
+  [grid [r c]]
+  (let [{:keys [rows cols]} (bounds grid)]
+    (and (<= 0 r)
        (<= 0 c)
-       (< r (count input))
-       (< c (count (first input)))))
+       (< r rows)
+       (< c cols))))
 
 (defn lookup
-  [input [r c]]
-  (when (in-bounds input [r c])
-    (-> input
+  [grid [r c]]
+  (when (in-bounds grid [r c])
+    (-> grid
         (nth r)
         (nth c))))
 
 (defn neighbors
-  [input [r c]]
-  (filterv #(in-bounds input %)
+  [grid [r c]]
+  (filterv #(in-bounds grid %)
            [[(dec r) c]
             [(inc r) c]
             [r (dec c)]
             [r (inc c)]]))
 
 (defn dneighbors
-  [input [r c]]
-  (filterv #(in-bounds input %)
+  [grid [r c]]
+  (filterv #(in-bounds grid %)
            [[(dec r) (dec c)]
             [(dec r) c]
             [(dec r) (inc c)]
@@ -43,10 +49,10 @@
             [r (inc c)]]))
 
 (defn lookup-neighbors
-  [input pt]
-  (->> (neighbors input pt)
-       (map #(lookup input %))))
+  [grid pt]
+  (->> (neighbors grid pt)
+       (map #(lookup grid %))))
 
 (defn update-grid
-  [input [r c] f]
-  (update input r #(update % c f)))
+  [grid [r c] f]
+  (update grid r #(update % c f)))

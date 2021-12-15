@@ -6,7 +6,8 @@
   :dependencies [[org.clojure/clojure "1.10.1"]
                  [lambdaisland/kaocha "1.60.945"]
                  [org.clojure/core.logic "1.0.0"]
-                 [com.clojure-goes-fast/clj-async-profiler "0.5.1"]]
+                 [com.clojure-goes-fast/clj-async-profiler "0.5.1"]
+                 [org.clojure/data.priority-map "1.1.0"]]
   :repl-options {:init-ns advent-of-code-2021.core}
   :aliases {"kaocha" ["run" "-m" "kaocha.runner"]}
   :jvm-opts ["-Djdk.attach.allowAttachSelf"])

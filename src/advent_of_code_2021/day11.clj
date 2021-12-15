@@ -19,8 +19,8 @@
 
 (defn resolve-flashes
   [{:keys [input flashed]}]
-  (let [new-flashes (->> (for [r (-> input count range)
-                               c (-> input first count range)
+  (let [new-flashes (->> (for [r (-> input :bounds first range)
+                               c (-> input :bounds peek range)
                                :let [v (grid/lookup input [r c])]
                                :when (< 9 v)]
                            [r c])
@@ -38,11 +38,11 @@
 
 (defn inc-map
   [input]
-  (update input :input (partial mapv (partial mapv inc))))
+  (update-in input [:input :grid] (partial mapv (partial mapv inc))))
 
 (defn cap-map
   [input]
-  (update input :input (partial mapv (partial mapv #(if (> % 9) 0 %)))))
+  (update-in input [:input :grid] (partial mapv (partial mapv #(if (> % 9) 0 %)))))
 
 (defn step
   [input]
@@ -73,11 +73,18 @@
    (->> (iterate step {:input input
                        :flashed #{}})
         (take-while #(< (-> % :flashed count)
-                        (->> % :input concat (apply concat) count)))
+                        (->> % :input :grid concat (apply concat) count)))
         count)))
 
 (comment
   sample
+  (step {:input (grid/parse-input "11111
+19991
+19191
+19991
+11111") :flashed #{}})
+  (inc-map {:input sample})
+  (do-1 sample)
   (->> (iterate step {:input sample
                       :flashed #{}})
        (drop 1)

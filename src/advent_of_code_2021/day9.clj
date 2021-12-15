@@ -9,8 +9,8 @@
 
 (defn low-points
   [input]
-  (for [r (-> input count range)
-        c (-> input first count range)
+  (for [r (-> input :bounds first range)
+        c (-> input :bounds peek range)
         :let [v (grid/lookup input [r c])
               ns (grid/lookup-neighbors input [r c])]
         :when (every? #(< v %) ns)]
@@ -60,6 +60,10 @@
         )))
 
 (comment
+  sample
+  (do-1 sample)
+  (->> sample
+        low-points)
   (grid/neighbors input [0 9])
   (apply set [])
   (set [[1 2] [2 3]])

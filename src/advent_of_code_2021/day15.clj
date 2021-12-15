@@ -17,35 +17,37 @@
 (def input (grid/parse-input (core/get-input 15)))
 
 (defn path-cost*
-  [costs path {:keys [actual]} [r c]]
-  (let [{:keys [rows cols]} (grid/bounds costs)]
+  [costs [tr tc] path {:keys [actual]} [r c]]
+  (let [new-actual (+ actual (grid/lookup costs [r c]))]
     [(conj path [r c])
-     {:actual (+ actual (grid/lookup costs [r c]))
-      :est (+ (- (dec rows) r) (- (dec cols) c))}]))
+     {:actual new-actual
+      :est (+ (- tr r) (- tc c) new-actual)}]))
 
 (defn keyfn*
   [cost]
   (apply + (vals cost)))
 
 (defn explore-next
-  [{:keys [costs frontier visited found]}]
+  [{:keys [costs target frontier visited found] :as state}]
   (let [[path path-cost] (peek frontier)
         rest-frontier (when (seq frontier) (pop frontier))
         end-pt (peek path)
         next-pts (remove visited (grid/neighbors costs end-pt))
-        next-paths (mapv #(path-cost* costs path path-cost %) next-pts)
-        next-frontier (into rest-frontier next-paths)
-        ]
+        next-paths (mapv #(path-cost* costs target path path-cost %) next-pts)
+        next-frontier (into rest-frontier next-paths)]
     ;; (prn path end-pt)
-    {:costs costs
-     :frontier next-frontier
-     :visited (conj visited end-pt)
-     :found (into found (filter (fn [[path cost]] (= 0 (:est cost))) next-paths))}
-    ))
+    (assoc state
+           :frontier next-frontier
+           :visited (conj visited end-pt)
+           :found (into found (filter (fn [[_ cost]] (= (:actual cost) (:est cost))) next-paths)))))
 
 (defn setup
   [input]
-  {:costs input :frontier (priority-map-keyfn keyfn* [[0 0]] {:actual 0}) :visited #{} :found []})
+  {:costs input
+   :frontier (priority-map-keyfn :est [[0 0]] {:actual 0})
+   :visited #{}
+   :found []
+   :target (mapv dec (:bounds input))})
 
 (defn riskier
   [costs n]
@@ -53,18 +55,21 @@
 
 (defn riskier-x
   [costs count]
-  (let [dups (for [n (range count)] (riskier costs n))
-        {:keys [rows]} (grid/bounds costs)]
-    (into [] (for [r (range rows)]
-               (->> dups
-                    (mapv #(nth % r))
-                    (apply concat)
-                    (into []))))))
+  (let [dups (for [n (range count)] (riskier (:grid costs) n))
+        [rows cols] (:bounds costs)]
+    {:grid (into [] (for [r (range rows)]
+                      (->> dups
+                           (mapv #(nth % r))
+                           (apply concat)
+                           (into []))))
+     :bounds [rows (* cols count)]}))
 
 (defn riskier-y
   [costs count]
-  (let [dups (for [n (range count)] (riskier costs n))]
-    (into [] (apply concat dups))))
+  (let [dups (for [n (range count)] (riskier (:grid costs) n))
+        [rows cols] (:bounds costs)]
+    {:grid (into [] (apply concat dups))
+     :bounds [(* rows count) cols]}))
 
 (defn do-1
   ([]
@@ -97,12 +102,16 @@
        setup
        (iterate explore-next)
        (take 200)
-       (drop-while (comp empty? :found))
-       first)
-  (do-2 sample)
+       last)
+  (do-1 sample)
   (-> sample
-       (riskier-x 5)
-       (riskier-y 5)))
+      (riskier-x 5)
+      (riskier-y 5))
+  (time (do-2 input))
+  (require '[clj-async-profiler.core :as prof])
+  (prof/profile (dotimes [i 10] (time (do-2 input))))
+  (prof/serve-files 8080)
+  )
   
   ;11637517422274862853338597396444961841755517295286)
   ;11637517422274862853338597396444960840755507195186

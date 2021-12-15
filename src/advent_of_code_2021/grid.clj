@@ -1,21 +1,24 @@
 (ns advent-of-code-2021.grid
    (:require [clojure.string :as str]))
 
+(defn- bounds
+  [grid]
+  [(count grid)
+   (count (first grid))])
+
 (defn parse-input
   [input]
   (->> input
        str/split-lines
        (mapv str/trim)
-       (mapv (partial mapv #(Character/digit % 10)))))
-
-(defn bounds
-  [grid]
-  {:rows (count grid)
-   :cols (count (first grid))})
+       (mapv (partial mapv #(Character/digit % 10)))
+       ((fn [grid]
+         {:bounds (bounds grid)
+          :grid grid}))))
 
 (defn in-bounds
-  [grid [r c]]
-  (let [{:keys [rows cols]} (bounds grid)]
+  [{:keys [bounds]} [r c]]
+  (let [[rows cols] bounds]
     (and (<= 0 r)
        (<= 0 c)
        (< r rows)
@@ -25,6 +28,7 @@
   [grid [r c]]
   (when (in-bounds grid [r c])
     (-> grid
+        :grid
         (nth r)
         (nth c))))
 
@@ -55,4 +59,4 @@
 
 (defn update-grid
   [grid [r c] f]
-  (update grid r #(update % c f)))
+  (update-in grid [:grid r] #(update % c f)))

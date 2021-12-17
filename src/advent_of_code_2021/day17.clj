@@ -61,18 +61,19 @@
          t)))
 
 (defn time-in-target-x
-  [{:keys [xmin xmax]} vx]
-  (set (for [t (range 1000)
+  ([input vx]
+   (time-in-target-x input vx 1000))
+  ([{:keys [xmin xmax]} vx tmax]
+  (set (for [t (range (inc tmax))
                   :let [x (- (tri vx) (tri (max 0 (- vx t))))]
                   :when (and (<= xmin x)
                              (<= x xmax))]
-              t)))
+              t))))
 
 (defn do-1
   ([]
    (do-1 input))
   ([input]
-   ;; The height reached is the triangle number for the initial velocity.
    ;; The height reached is the triangle number for the initial velocity.
    (-> input
        max-vy
@@ -83,10 +84,11 @@
   (do-2 input))
   ([input]
    (let [[min-vx max-vx min-vy max-vy] ((juxt min-vx max-vx min-vy max-vy) input)
-         txs (->> (range min-vx (inc max-vx))
-                  (mapv #(vector % (time-in-target-x input %))))
          tys (->> (range min-vy (inc max-vy))
                   (mapv #(vector % (time-in-target-y input %))))
+         t-max (apply max (apply concat (map peek tys)))
+         txs (->> (range min-vx (inc max-vx))
+                  (mapv #(vector % (time-in-target-x input % t-max))))
          hit-vectors (for [[vx tx] txs
                            [vy ty] tys
                            :when (seq (set/intersection tx ty))]
@@ -97,7 +99,7 @@
   (seq (set/intersection (time-in-target-x sample 17)
                     (time-in-target-y sample -4)))
   sample
-  (do-2 sample)
+  (time (dotimes [i 10] (time (do-2 input))))
   (sort (map (partial apply vector) (partition 2 [23,-10  25,-9   27,-5   29,-6   22,-6   21,-7   9,0     27,-7   24,-5
    25,-7   26,-6   25,-5   6,8     11,-2   20,-5   29,-10  6,3     28,-7
    8,0     30,-6   29,-8   20,-10  6,7     6,4     6,1     14,-4   21,-6

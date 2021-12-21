@@ -7,14 +7,16 @@
    (count (first grid))])
 
 (defn parse-input
-  [input]
-  (->> input
-       str/split-lines
-       (mapv str/trim)
-       (mapv (partial mapv #(Character/digit % 10)))
-       ((fn [grid]
-         {:bounds (bounds grid)
-          :grid grid}))))
+  ([input]
+   (parse-input input #(Character/digit % 10)))
+  ([input parse-fn]
+   (->> input
+        str/split-lines
+        (mapv str/trim)
+        (mapv (partial mapv parse-fn))
+        ((fn [grid]
+           {:bounds (bounds grid)
+            :grid grid})))))
 
 (defn in-bounds
   [{:keys [bounds]} [r c]]
@@ -25,12 +27,15 @@
        (< c cols))))
 
 (defn lookup
-  [grid [r c]]
-  (when (in-bounds grid [r c])
-    (-> grid
-        :grid
-        (nth r)
-        (nth c))))
+  ([grid [r c]]
+   (lookup grid [r c] nil))
+  ([grid [r c] default]
+   (if (in-bounds grid [r c])
+     (-> grid
+         :grid
+         (nth r)
+         (nth c))
+     default)))
 
 (defn neighbors
   [grid [r c]]

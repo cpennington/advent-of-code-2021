@@ -106,67 +106,86 @@ on x=-53470..21291,y=-120233..-33476,z=-44150..38147
 off x=-93533..-4276,y=-16170..68771,z=-104985..-24507"))
 (def input (parse-input (core/get-input 22)))
 
-(defn as-map
-  [[on? xmin xmax ymin ymax zmin zmax]]
-  (into {} (for [x (range xmin (inc xmax))
-                 y (range ymin (inc ymax))
-                 z (range zmin (inc zmax))]
-             [[x y z] on?])))
+(defn overlap
+  [[xmin xmax ymin ymax zmin zmax]
+   [xmin2 xmax2 ymin2 ymax2 zmin2 zmax2]]
+  [(max xmin xmin2)
+   (min xmax xmax2)
+   (max ymin ymin2)
+   (min ymax ymax2)
+   (max zmin zmin2)
+   (min zmax zmax2)])
+
+(defn volume
+  [[xmin xmax ymin ymax zmin zmax]]
+  (* (- xmax xmin) (- ymax ymin) (- zmax zmin)))
+
+(defn overlap?
+  [cube1 cube2]
+  (not= 0 (volume (overlap cube1 cube2))))
 
 (defn split-x
-  [tag [xmin xmax ymin ymax zmin zmax] x]
+  [[xmin xmax ymin ymax zmin zmax] x]
   (if (and (< xmin x) (< x xmax))
-    {:dirty [[xmin x ymin ymax zmin zmax]
-             [x xmax ymin ymax zmin zmax]]}
-    {tag [[xmin xmax ymin ymax zmin zmax]]}))
+    [[xmin x ymin ymax zmin zmax]
+     [x xmax ymin ymax zmin zmax]]
+    [[xmin xmax ymin ymax zmin zmax]]))
 
 (defn split-y
-  [tag [xmin xmax ymin ymax zmin zmax] y]
+  [[xmin xmax ymin ymax zmin zmax] y]
   (if (and (< ymin y) (< y ymax))
-    {:dirty [[xmin xmax ymin y zmin zmax]
-             [xmin xmax y ymax zmin zmax]]}
-    {tag [[xmin xmax ymin ymax zmin zmax]]}))
+    [[xmin xmax ymin y zmin zmax]
+     [xmin xmax y ymax zmin zmax]]
+    [[xmin xmax ymin ymax zmin zmax]]))
 
 (defn split-z
-  [tag [xmin xmax ymin ymax zmin zmax] z]
+  [[xmin xmax ymin ymax zmin zmax] z]
   (if (and (< zmin z) (< z zmax))
-    {:dirty [[xmin xmax ymin ymax zmin z]
-             [xmin xmax ymin ymax z zmax]]}
-    {tag [[xmin xmax ymin ymax zmin zmax]]}))
+    [[xmin xmax ymin ymax zmin z]
+     [xmin xmax ymin ymax z zmax]]
+    [[xmin xmax ymin ymax zmin zmax]]))
 
 (defn combine-cubes
   [[xmin xmax ymin ymax zmin zmax :as cube1]
    [xmin2 xmax2 ymin2 ymax2 zmin2 zmax2 :as cube2]]
-  (cond
-    (every? identity (map (partial apply =) [[xmax xmin2] [ymin ymin2] [ymax ymax2] [zmin zmin2] [zmax zmax2]]))
-    [xmin xmax2 ymin ymax zmin zmax]
-    (every? identity (map (partial apply =) [[xmin xmax2] [ymin ymin2] [ymax ymax2] [zmin zmin2] [zmax zmax2]]))
-    [xmin2 xmax ymin ymax zmin zmax]
-    (every? identity (map (partial apply =) [[xmin xmin2] [xmax xmax2] [ymax ymin2] [zmin zmin2] [zmax zmax2]]))
-    [xmin xmax ymin ymax2 zmin zmax]
-    (every? identity (map (partial apply =) [[xmin xmin2] [xmax xmax2] [ymin ymax2] [zmin zmin2] [zmax zmax2]]))
-    [xmin xmax ymin2 ymax zmin zmax]
-    (every? identity (map (partial apply =) [[xmin xmin2] [xmax xmax2] [ymin ymin2] [ymax ymax2] [zmax zmin2]]))
-    [xmin xmax ymin ymax zmin zmax2]
-    (every? identity (map (partial apply =) [[xmin xmin2] [xmax xmax2] [ymin ymin2] [ymax ymax2] [zmin zmax2]]))
-    [xmin xmax ymin ymax zmin2 zmax]
-    :else nil))
+  (let [match-x (and (= xmin xmin2)
+                     (= xmax xmax2))
+        match-y (and (= ymin ymin2)
+                     (= ymax ymax2))
+        match-z (and (= zmin zmin2)
+                     (= zmax zmax2))]
+    (cond
+      (and match-y match-z (and (>= xmax xmin2) (>= xmax2 xmin)))
+      [(min xmin xmin2) (max xmax xmax2) ymin ymax zmin zmax]
+      (and match-x match-z (and (>= ymax ymin2) (>= ymax2 ymin)))
+      [xmin xmax (min ymin ymin2) (max ymax ymax2) zmin zmax]
+      (and match-x match-y (and (>= zmax zmin2) (>= zmax2 zmin)))
+      [xmin xmax ymin ymax (min zmin zmin2) (max zmax zmax2)]
+      :else nil)))
 
 (defn combine-all
-  ([{:keys [dirty reduced]}]
+  ([{:keys [dirty reduced] :or {dirty [] reduced []}}]
+;;    (prn "combine-all" (count dirty) (count reduced))
    (cond
-     (empty? dirty) reduced
+     (or (empty? dirty) (nil? dirty))
+     (do
+       (prn (for [l reduced
+                  r reduced
+                  :when (and (not= l r)
+                             (overlap? l r))]
+              [l r]))
+       (set reduced))
      :else (let [[fst & rest] dirty
                  [first-combine] (->> reduced
-                                    (map #(vector (combine-cubes fst %) %))
-                                    (remove nil?))]
+                                      (map #(vector (combine-cubes fst %) %))
+                                      (remove (comp nil? first)))]
              (if (nil? first-combine)
                (recur {:dirty rest :reduced (conj reduced fst)})
                (let [[combined combined-with] first-combine
                      dirty* (into #{} (conj rest combined))
                      reduced* (into #{} (remove #{combined-with} reduced))]
-                ;;  (prn "reduced" first combined-with combined)
-                 (recur {:dirty dirty* :reduced reduced*})))))))
+                 (when (or (not= dirty dirty*) (not= reduced reduced*))
+                   (recur {:dirty dirty* :reduced reduced*}))))))))
 
 (defn split-all
   [cubes split-fn]
@@ -175,42 +194,52 @@ off x=-93533..-4276,y=-16170..68771,z=-104985..-24507"))
 (defn merge-cubes
   [[xmin-1 xmax-1 ymin-1 ymax-1 zmin-1 zmax-1 :as existing]
    [on? [xmin-2 xmax-2 ymin-2 ymax-2 zmin-2 zmax-2 :as new]]]
-  (let [splits-1 (reduce split-all #{cube-1} [#(split-x % xmin-2)
-                                              #(split-x % xmax-2)
-                                              #(split-y % ymin-2)
-                                              #(split-y % ymax-2)
-                                              #(split-z % zmin-2)
-                                              #(split-z % zmax-2)])
-        splits-2 (reduce split-all #{cube-2} [#(split-x % xmin-1)
-                                              #(split-x % xmax-1)
-                                              #(split-y % ymin-1)
-                                              #(split-y % ymax-1)
-                                              #(split-z % zmin-1)
-                                              #(split-z % zmax-1)])]
-    (if (= on?-1 on?-2)
-      (combine-all {:dirty (conj (set/difference splits-1 splits-2) cube-2)})
-      (combine-all {:dirty (set/difference splits-1 splits-2)})
-       on?-2 #{cube-2}})))
+  (if (overlap? existing new)
+    (if on?
+      (let [splits-2 (reduce split-all #{new} [#(split-x % xmin-1)
+                                               #(split-x % xmax-1)
+                                               #(split-y % ymin-1)
+                                               #(split-y % ymax-1)
+                                               #(split-z % zmin-1)
+                                               #(split-z % zmax-1)])
+            remove-overlap (disj splits-2 (overlap existing new))
+            recombined (combine-all {:dirty remove-overlap})]
+        {:reduced #{existing}
+         :dirty recombined})
+      (let [splits-1 (reduce split-all #{existing} [#(split-x % xmin-2)
+                                                    #(split-x % xmax-2)
+                                                    #(split-y % ymin-2)
+                                                    #(split-y % ymax-2)
+                                                    #(split-z % zmin-2)
+                                                    #(split-z % zmax-2)])
+            remove-overlap (disj splits-1 (overlap existing new))
+            recombined (combine-all {:dirty remove-overlap})]
+          {:dirty recombined}))
+    {:reduced #{existing}
+     :dirty #{new}}))
 
 (defn add-cube
   [on-cubes [on? cube]]
+;;   (prn (count on-cubes))
   (if (empty? on-cubes)
     (if on? #{cube} #{})
-    (apply merge-with
-           #(combine-all {:dirty (into %1 %2)})
-           (for [[on?* cubes] cube-map
-                 cube* cubes]
-             (do
-            ;;    (prn on?* cube* on? cube (merge-cubes [on?* cube*] [on? cube]))
-               (merge-cubes [on?* cube*] [on? cube]))))))
+    (let [{overlapping-cubes true
+           not-overlapping false :or
+           {overlapping-cubes []
+            not-overlapping []}} (group-by #(overlap? % cube) on-cubes)
+        ;;   _ (prn "overlapping" overlapping-cubes not-overlapping)
+          merged-cubes (for [cube* overlapping-cubes]
+                         (merge-cubes cube* [on? cube]))
+          to-combine (apply merge-with
+                            into
+                            (into [{:reduced not-overlapping}] merged-cubes))
+        ;;   _ (prn "to-combine" to-combine (update to-combine :dirty #(combine-all {:dirty %})))
+          ]
+      (combine-all to-combine))))
 
 (defn valid-1
   [[on? [xmin xmax ymin ymax zmin zmax]]]
   (every? #(and (>= % -50) (<= % 51)) [xmin xmax ymin ymax zmin zmax]))
-
-(defn volume
-  [[xmin xmax ymin ymax zmin zmax]]
-  (* (- xmax xmin) (- ymax ymin) (- zmax zmin)))
 
 (defn do-1
   ([]
@@ -219,7 +248,6 @@ off x=-93533..-4276,y=-16170..68771,z=-104985..-24507"))
    (->> input
         (filter valid-1)
         (reduce add-cube {})
-        (#(get % true))
         (map volume)
         (reduce +))))
 
@@ -234,13 +262,19 @@ off x=-93533..-4276,y=-16170..68771,z=-104985..-24507"))
         (reduce +))))
 
 (comment
+  (combine-all { :dirty #{[-22 8 24 47 -50 0] [-46 -22 -6 47 -50 0] [-22 8 -6 24 -50 -26]}})
   (map first '([[[0 2 0 1 0 1]] [1 2 0 1 0 1] [2 3 0 1 0 1]]))
   (combine-all {:dirty [[0 1 0 1 0 1] [1 2 0 1 0 1] [2 3 0 1 0 1]]})
   (clamp-1 (last sample))
   (filter valid-1 sample)
 
+  (->> sample
+       (filter valid-1)
+       (reduce add-cube {})
+       (map volume)
+       (reduce +))
   (require '[clj-async-profiler.core :as prof])
-  (prof/profile (do-1 (take 9 sample)))
+  (prof/profile (do-1 sample))
   (prof/serve-files 8080)
 
   (reduce add-cube {} (map clamp-1 sample))
@@ -251,6 +285,6 @@ off x=-93533..-4276,y=-16170..68771,z=-104985..-24507"))
        (reduce add-cube {})
        (#(get % true))
        (map volume)
-       (reduce +)
-       ))
+       (reduce +))
+  )
 

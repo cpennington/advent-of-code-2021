@@ -118,7 +118,7 @@ off x=-93533..-4276,y=-16170..68771,z=-104985..-24507"))
 
 (defn volume
   [[xmin xmax ymin ymax zmin zmax]]
-  (* (- xmax xmin) (- ymax ymin) (- zmax zmin)))
+  (* (max 0 (- xmax xmin)) (max 0 (- ymax ymin)) (max 0 (- zmax zmin))))
 
 (defn overlap?
   [cube1 cube2]
@@ -167,14 +167,7 @@ off x=-93533..-4276,y=-16170..68771,z=-104985..-24507"))
   ([{:keys [dirty reduced] :or {dirty [] reduced []}}]
 ;;    (prn "combine-all" (count dirty) (count reduced))
    (cond
-     (or (empty? dirty) (nil? dirty))
-     (do
-       (prn (for [l reduced
-                  r reduced
-                  :when (and (not= l r)
-                             (overlap? l r))]
-              [l r]))
-       (set reduced))
+     (or (empty? dirty) (nil? dirty)) (set reduced)
      :else (let [[fst & rest] dirty
                  [first-combine] (->> reduced
                                       (map #(vector (combine-cubes fst %) %))
@@ -191,51 +184,41 @@ off x=-93533..-4276,y=-16170..68771,z=-104985..-24507"))
   [cubes split-fn]
   (into #{} (mapcat split-fn cubes)))
 
-(defn merge-cubes
-  [[xmin-1 xmax-1 ymin-1 ymax-1 zmin-1 zmax-1 :as existing]
-   [on? [xmin-2 xmax-2 ymin-2 ymax-2 zmin-2 zmax-2 :as new]]]
-  (if (overlap? existing new)
-    (if on?
-      (let [splits-2 (reduce split-all #{new} [#(split-x % xmin-1)
-                                               #(split-x % xmax-1)
-                                               #(split-y % ymin-1)
-                                               #(split-y % ymax-1)
-                                               #(split-z % zmin-1)
-                                               #(split-z % zmax-1)])
-            remove-overlap (disj splits-2 (overlap existing new))
-            recombined (combine-all {:dirty remove-overlap})]
-        {:reduced #{existing}
-         :dirty recombined})
-      (let [splits-1 (reduce split-all #{existing} [#(split-x % xmin-2)
-                                                    #(split-x % xmax-2)
-                                                    #(split-y % ymin-2)
-                                                    #(split-y % ymax-2)
-                                                    #(split-z % zmin-2)
-                                                    #(split-z % zmax-2)])
-            remove-overlap (disj splits-1 (overlap existing new))
-            recombined (combine-all {:dirty remove-overlap})]
-          {:dirty recombined}))
-    {:reduced #{existing}
-     :dirty #{new}}))
+(defn subtract-cube
+   [existing [xmin xmax ymin ymax zmin zmax :as to-subtract]]
+   (if (overlap? existing to-subtract)
+     (let [split-existing (reduce split-all #{existing} [#(split-x % xmin)
+                                                         #(split-x % xmax)
+                                                         #(split-y % ymin)
+                                                         #(split-y % ymax)
+                                                         #(split-z % zmin)
+                                                         #(split-z % zmax)])
+           remove-overlap (disj split-existing (overlap existing to-subtract))
+           recombined (combine-all {:dirty remove-overlap})]
+       recombined)
+     existing))
+
+(defn subtract-all-from-cube
+  [existing to-subtract]
+  (combine-all {:dirty
+                (reduce (fn [es t-s] (mapcat #(subtract-cube % t-s) es))
+                        [existing]
+                        to-subtract)}))
 
 (defn add-cube
   [on-cubes [on? cube]]
-;;   (prn (count on-cubes))
   (if (empty? on-cubes)
     (if on? #{cube} #{})
-    (let [{overlapping-cubes true
-           not-overlapping false :or
-           {overlapping-cubes []
-            not-overlapping []}} (group-by #(overlap? % cube) on-cubes)
-        ;;   _ (prn "overlapping" overlapping-cubes not-overlapping)
-          merged-cubes (for [cube* overlapping-cubes]
-                         (merge-cubes cube* [on? cube]))
-          to-combine (apply merge-with
-                            into
-                            (into [{:reduced not-overlapping}] merged-cubes))
-        ;;   _ (prn "to-combine" to-combine (update to-combine :dirty #(combine-all {:dirty %})))
-          ]
-      (combine-all to-combine))))
+    (let [{overlapping true not-overlapping false}
+          (group-by #(overlap? cube %) on-cubes)]
+      (prn (count overlapping) (count not-overlapping))
+      (if on?
+        (let [newly-turned-on (subtract-all-from-cube cube on-cubes)]
+          (combine-all {:dirty newly-turned-on :reduced on-cubes}))
+        (let [{overlapping true not-overlapping false}
+              (group-by #(overlap? cube %) on-cubes)
+              trimmed (mapcat #(subtract-cube % cube) overlapping)]
+          (combine-all {:dirty trimmed :reduced not-overlapping}))))))
 
 (defn valid-1
   [[on? [xmin xmax ymin ymax zmin zmax]]]
@@ -257,27 +240,23 @@ off x=-93533..-4276,y=-16170..68771,z=-104985..-24507"))
   ([input]
    (->> input
         (reduce add-cube {})
-        (#(get % true))
         (map volume)
-        (reduce +))))
+        (reduce +)
+        )))
 
 (comment
-  (combine-all { :dirty #{[-22 8 24 47 -50 0] [-46 -22 -6 47 -50 0] [-22 8 -6 24 -50 -26]}})
-  (map first '([[[0 2 0 1 0 1]] [1 2 0 1 0 1] [2 3 0 1 0 1]]))
-  (combine-all {:dirty [[0 1 0 1 0 1] [1 2 0 1 0 1] [2 3 0 1 0 1]]})
-  (clamp-1 (last sample))
-  (filter valid-1 sample)
-
-  (->> sample
+  (->> input
        (filter valid-1)
        (reduce add-cube {})
        (map volume)
        (reduce +))
+  (do-2 input)
   (require '[clj-async-profiler.core :as prof])
-  (prof/profile (do-1 sample))
+  (prof/profile (do-2 input))
   (prof/serve-files 8080)
 
-  (reduce add-cube {} (map clamp-1 sample))
+  (overlap [-48874 -32167 7363 30329 -88620 -67700]
+            [-77392 -63726 -7828 18483 -49154 -23875])
   sample
   (do-1 (take 8 sample))
   (->> sample

@@ -2,6 +2,7 @@
   (:require
    [advent-of-code-2021.core :as core]
    [advent-of-code-2021.grid :as grid]
+   [advent-of-code-2021.search :as search]
    [clojure.data.priority-map :refer [priority-map-keyfn]]
    [clojure.data.int-map :as i]))
 
@@ -17,43 +18,18 @@
 2311944581"))
 (def input (grid/parse-input (core/get-input 15)))
 
-(defn index
-  [costs [r c]]
-  (let [[_ cols] (:bounds costs)]
-    (+ (* r cols) c)))
-
-(defn path-cost*
-  [costs frontier [tr tc] {:keys [actual]} [r c]]
-  (let [new-actual (+ actual (grid/lookup costs [r c]))
-        prior-cost (get frontier [r c])]
-    [[r c]
-     (if (or (nil? prior-cost)
-             (< new-actual (:actual prior-cost)))
-       {:actual new-actual
-        :index (index costs [r c])
-        :est (+ (- tr r) (- tc c) new-actual)}
-       prior-cost)]))
-
-(defn explore-next
-  [{:keys [costs target frontier visited found] :as state}]
-  (let [[pt pt-cost] (peek frontier)
-        rest-frontier (when (< 0 (count frontier)) (pop frontier))
-        neighbors (remove #(visited (index costs %)) (grid/neighbors costs pt))
-        next-pts (map #(path-cost* costs frontier target pt-cost %) neighbors)
-        next-frontier (into rest-frontier next-pts)]
-    ;; (prn path end-pt)
-    (assoc state
-           :frontier next-frontier
-           :visited (conj visited (:index pt-cost))
-           :found (into found (filter (fn [[_ cost]] (= (:actual cost) (:est cost))) next-pts)))))
-
 (defn setup
   [input]
-  {:costs input
-   :frontier (priority-map-keyfn :est [0 0] {:actual 0 :index 0})
-   :visited (i/dense-int-set)
-   :found []
-   :target (mapv dec (:bounds input))})
+  (let [target (mapv dec (:bounds input))]
+    {:costs input
+     :frontier (priority-map-keyfn :total [0 0] {:actual 0 :index 0})
+     :visited #{}
+     :found []
+     :cost-fn (fn [prior-cost next-state]
+                (+ (:actual prior-cost) (grid/lookup input next-state)))
+     :est-fn (fn [next-state]
+               (apply + (map - target next-state)))
+     :neighbor-fn (fn [state] (grid/neighbors input state))}))
 
 (defn riskier
   [costs n]
@@ -83,11 +59,7 @@
   ([input]
    (->> input
         setup
-        (iterate explore-next)
-        (drop-while (comp empty? :found))
-        first
-        :found
-        first
+        search/search
         peek
         :actual)))
 

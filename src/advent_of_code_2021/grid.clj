@@ -12,7 +12,6 @@
   ([input parse-fn]
    (->> input
         str/split-lines
-        (mapv str/trim)
         (mapv (partial mapv parse-fn))
         ((fn [grid]
            {:bounds (bounds grid)

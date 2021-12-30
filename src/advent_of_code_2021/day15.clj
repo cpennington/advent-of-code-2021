@@ -2,9 +2,7 @@
   (:require
    [advent-of-code-2021.core :as core]
    [advent-of-code-2021.grid :as grid]
-   [advent-of-code-2021.search :as search]
-   [clojure.data.priority-map :refer [priority-map-keyfn]]
-   [clojure.data.int-map :as i]))
+   [advent-of-code-2021.search :as search]))
 
 (def sample (grid/parse-input "1163751742
 1381373672
@@ -21,15 +19,12 @@
 (defn setup
   [input]
   (let [target (mapv dec (:bounds input))]
-    {:costs input
-     :frontier (priority-map-keyfn :total [0 0] {:actual 0 :index 0})
-     :visited #{}
-     :found []
-     :cost-fn (fn [prior-cost next-state]
-                (+ (:actual prior-cost) (grid/lookup input next-state)))
+    (search/setup 
+    {:initial-states [[0 0]]
      :est-fn (fn [next-state]
                (apply + (map - target next-state)))
-     :neighbor-fn (fn [state] (grid/neighbors input state))}))
+     :neighbor-fn (fn [state] (map #(vector % (grid/lookup input %))
+                                   (grid/neighbors input state)))})))
 
 (defn riskier
   [costs n]

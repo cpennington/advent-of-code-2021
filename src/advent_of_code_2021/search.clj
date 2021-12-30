@@ -19,7 +19,9 @@
         neighbor-costs (into {} (map #(state-cost* est-fn state-cost %) neighbors))
         next-frontier (merge-with #(min-key :actual %1 %2) rest-frontier neighbor-costs)]
     (when (= 0 (mod (count visited) 1000))
-      (prn (count visited)))
+      (prn {:visited (count visited)
+            :state-cost state-cost
+            :frontier (count frontier)}))
     (assoc search-state
            :frontier next-frontier
            :visited (conj visited state)

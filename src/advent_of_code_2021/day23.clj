@@ -9,19 +9,22 @@
   [ix]
   (inc ix))
 
+(def offset-mult 10)
+
 (defn ->room
   [label ix]
-  (case label
-    \A (- ix)
-    \B (- (+ 10 ix))
-    \C (- (+ 20 ix))
-    \D (- (+ 30 ix))))
+  (let [offset (case label
+                 \A 0
+                 \B 1
+                 \C 2
+                 \D 3)]
+    (- (+ (* offset-mult offset) ix))))
 
 (defn loc->ix
   [loc]
   (if (pos? loc)
     (dec loc)
-    (mod (- loc) 10)))
+    (mod (- loc) offset-mult)))
 
 (defn loc->type
   [loc]
@@ -32,7 +35,7 @@
 (defn loc->label
   [loc]
   (-> (- loc)
-      (Math/floorDiv 10)
+      (Math/floorDiv offset-mult)
       (+ (int \A))
       char))
 

@@ -9,7 +9,7 @@
   [ix]
   (inc ix))
 
-(def offset-mult 10)
+(def offset-mult 4)
 
 (defn ->room
   [label ix]

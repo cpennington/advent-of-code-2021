@@ -215,7 +215,6 @@
         add-map-fns
         setup-search
         (iterate search/explore-next)
-        (take 100000)
         (drop-while (comp empty? :found))
         first
         :found

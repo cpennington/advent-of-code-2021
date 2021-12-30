@@ -7,11 +7,34 @@
 
 (defn ->hallway
   [ix]
-  [:hallway ix])
+  (inc ix))
 
 (defn ->room
   [label ix]
-  [:room label ix])
+  (case label
+    \A (- ix)
+    \B (- (+ 10 ix))
+    \C (- (+ 20 ix))
+    \D (- (+ 30 ix))))
+
+(defn loc->ix
+  [loc]
+  (if (pos? loc)
+    (dec loc)
+    (mod (- loc) 10)))
+
+(defn loc->type
+  [loc]
+  (if (pos? loc)
+    :hallway
+    :room))
+
+(defn loc->label
+  [loc]
+  (-> (- loc)
+      (Math/floorDiv 10)
+      (+ (int \A))
+      char))
 
 (def mini-sample {:map-def {:hall-size 7
                             :rooms {\A {:size 2 :door 2}
@@ -68,15 +91,6 @@
       (assoc-in [:pieces (->room \C 4)] (get-in input [:pieces (->room \C 1)]))
       (assoc-in [:pieces (->room \D 4)] (get-in input [:pieces (->room \D 1)]))))
 
-(defn occupied?
-  [pieces location]
-  (contains? pieces location))
-
-(def loc->ix peek)
-(def loc->type first)
-(def loc->label #(nth % 1))
-
-
 (defn piece-cost
   [piece]
   (case piece
@@ -116,7 +130,7 @@
                               (concat a-to-door b-to-door door-to-door))))
 
                         [:hallway :room]
-                        (let [[_ label _] b
+                        (let [label (loc->label b)
                               to-door (path-between b (->room label 0))
                               door (-> rooms (#(get % label)) :door)
                               door-to-hall (path-between a (->hallway door))]
@@ -218,7 +232,7 @@
 (comment
   (require '[clj-async-profiler.core :as prof])
   (prof/serve-files 8080)
-  (prof/profile (do-1 sample))
+  (prof/profile (time (do-1 sample)))
   (prof/profile (->> input
                      part-2-input
                      add-map-fns

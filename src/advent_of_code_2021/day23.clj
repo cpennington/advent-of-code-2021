@@ -39,6 +39,26 @@
       (+ (int \A))
       char))
 
+(defn loc->piece
+  [pieces loc]
+  (get pieces loc))
+
+(defn occupied-locs
+  [pieces]
+  (keys pieces))
+
+(defn piece-locs
+  [pieces]
+  pieces)
+
+(defn move-piece
+  [pieces p loc loc']
+  (-> pieces
+      (assoc loc' p)
+      (dissoc loc)))
+
+(def encode-pieces identity)
+
 (def mini-sample {:map-def {:hall-size 7
                             :rooms {\A {:size 2 :door 2}
                                     \B {:size 2 :door 4}}}
@@ -151,7 +171,7 @@
       :size
       range
       (map #(->room room-label %))
-      (map #(get pieces %))
+      (map #(loc->piece pieces %))
       (remove nil?)
       set))
 
@@ -159,8 +179,7 @@
   [{:keys [path-between]} pieces a b]
   (let [path (-> (path-between a b)
                  (disj a))
-        occupied (->> pieces
-                      keys)]
+        occupied (occupied-locs pieces)]
     (every? #(not (contains? path %)) occupied)))
 
 (defn distance
@@ -175,7 +194,7 @@
   [{:keys [rooms hall-size] :as map-def} pieces]
   (let [room-size (-> rooms (#(get % \A)) :size)
         doors (->> rooms vals (map :door) set)]
-    (for [[loc p] pieces
+    (for [[loc p] (piece-locs pieces)
           :when (or (= (loc->type loc) :room)
                     (-> (pieces-in-room map-def pieces p)
                         (disj p)
@@ -189,9 +208,7 @@
                             (map #(->hallway %)))))
           :when (and (not= loc loc')
                      (path-open? map-def pieces loc loc'))]
-      [(-> pieces
-           (assoc loc' p)
-           (dissoc loc))
+      [(move-piece pieces p loc loc')
        (path-cost map-def p loc loc')])))
 
 (defn estimate-cost
@@ -206,7 +223,7 @@
 (defn setup-search
   [{:keys [map-def pieces]}]
   (search/setup
-   {:initial-states [pieces]
+   {:initial-states [(encode-pieces pieces)]
     :neighbor-fn #(possible-moves map-def %)
     :est-fn #(estimate-cost map-def %)}))
 
@@ -232,6 +249,9 @@
    nil))
 
 (comment
+  (let [a {:1 3 :3 6} b {:3 2 :1 5}] (time (dotimes [_ 100000] (= a b))))
+  (let [a [2 5] b [3 6]] (time (dotimes [_ 100000] (= a b))))
+  (let [a "12345" b "23456"] (time (dotimes [_ 100000] (= a b))))
   (require '[clj-async-profiler.core :as prof])
   (prof/serve-files 8080)
   (prof/profile (time (do-1 sample)))

@@ -225,10 +225,10 @@
 (defn setup-search
   [{:keys [map-def pieces]}]
   (search/setup
-   {:initial-states [(encode-pieces pieces)]
+   {:initial-states [pieces]
     :neighbor-fn #(possible-moves map-def %)
-    ;; :est-fn #(estimate-cost map-def %)
-    :est-fn (constantly 0)
+    :est-fn #(estimate-cost map-def %)
+    ;; :est-fn (constantly 0)
     :target (->> pieces
                  (map (comp #(vector % (loc->label %)) first))
                  (into {})
@@ -260,11 +260,13 @@
   (->> sample
        add-map-fns
        setup-search
-       search/explore-next
-       :frontier
-       (map first)
-       (map visualize-pieces)
-       (map print))
+       (iterate search/explore-next)
+       (drop 4000)
+       first
+       :visited
+       (group-by peek)
+       (map #(vector (first %) (count (peek %))))
+       sort)
   
   (->> sample
        add-map-fns
@@ -273,6 +275,8 @@
        (#(% (->room \A 1) (->room \C 0)))
        (map #(vector (loc->type %) (loc->label %) (loc->ix %)))
        sort)
+  (sort [[0 1] [443 1] [3441 1] [240 3] [229 1] [20 4] [3460 2] [224 1] [463 2] [60 2] [27 1] [24 1] [260 2] [3464 1] [221 2] [464 1] [264 1] [50 1] [21 2] [460 2] [241 2] [3463 2] [420 1] [263 2] [40 6] [5460 1] [3440 3] [223 2] [3420 1] [41 4] [3474 1] [461 1] [243 3] [43 5] [29 1] [44 3] [5440 1] [465 1] [3444 1] [227 1] [220 3] [25 1] [261 1] [440 3] [444 1] [23 2] [230 1] [47 1] [3471 1] [200 1] [3473 2] [244 2] [441 1] [30 2] [3461 1] [3470 1] [3443 1] [49 1]])
+  (sort [[0 1] [5480 1] [3484 1] [443 1] [3441 1] [240 3] [20 4] [3460 2] [224 1] [463 2] [27 1] [24 1] [260 1] [3464 1] [3510 1] [221 2] [464 1] [264 1] [21 2] [460 1] [3481 1] [241 2] [3463 2] [5490 1] [420 1] [263 2] [40 5] [5460 1] [3440 2] [223 2] [3511 1] [5511 1] [3420 1] [5484 1] [3490 1] [41 4] [3491 1] [461 1] [243 3] [5510 1] [43 5] [44 3] [5440 1] [5491 1] [465 1] [3444 1] [5470 1] [220 3] [25 1] [261 1] [440 2] [5481 1] [444 1] [23 2] [47 1] [3471 1] [200 1] [244 2] [441 1] [3480 1] [5483 1] [3461 1] [3470 2] [3483 1] [3443 1]])
   (print (visualize-pieces (encode-pieces (:pieces sample))))
   (update "12345" 3 (constantly \2))
   (occupied-locs (encode-pieces (:pieces (part-2-input sample))))

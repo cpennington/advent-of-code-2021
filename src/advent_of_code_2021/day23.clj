@@ -39,6 +39,15 @@
       (+ (int \A))
       char))
 
+(defn ix->str-ix
+  [ix]
+  (+ ix 15))
+
+(def str-ixs (range 27))
+(defn str-ix->ix
+  [str-ix]
+  (- str-ix 15))
+
 (defn loc->piece
   [pieces loc]
   (get pieces loc))
@@ -57,7 +66,37 @@
       (assoc loc' p)
       (dissoc loc)))
 
-(def encode-pieces identity)
+(defn encode-pieces
+  ([pieces]
+   (encode-pieces pieces false))
+  ([pieces encode?]
+   (if encode?
+     (->> str-ixs
+          (map str-ix->ix)
+          (map #(get pieces % \.))
+          (apply str))
+     pieces)))
+
+(defn visualize-pieces
+  [pieces]
+  (let [hallway (apply str (map (comp loc->piece ->hallway) (range 11)))]
+    (str hallway "\n"
+         "  " (loc->piece pieces (->room \A 0))
+         " "  (loc->piece pieces (->room \B 0))
+         " "  (loc->piece pieces (->room \C 0))
+         " "  (loc->piece pieces (->room \D 0)) "  \n"
+         "  " (loc->piece pieces (->room \A 1))
+         " "  (loc->piece pieces (->room \B 1))
+         " "  (loc->piece pieces (->room \C 1))
+         " "  (loc->piece pieces (->room \D 1)) "  \n"
+         "  " (loc->piece pieces (->room \A 2))
+         " "  (loc->piece pieces (->room \B 2))
+         " "  (loc->piece pieces (->room \C 2))
+         " "  (loc->piece pieces (->room \D 2)) "  \n"
+         "  " (loc->piece pieces (->room \A 3))
+         " "  (loc->piece pieces (->room \B 3))
+         " "  (loc->piece pieces (->room \C 3))
+         " "  (loc->piece pieces (->room \D 3)) "  \n")))
 
 (def mini-sample {:map-def {:hall-size 7
                             :rooms {\A {:size 2 :door 2}
@@ -225,7 +264,7 @@
 (defn setup-search
   [{:keys [map-def pieces]}]
   (search/setup
-   {:initial-states [pieces]
+   {:initial-states [(encode-pieces pieces)]
     :neighbor-fn #(possible-moves map-def %)
     :est-fn #(estimate-cost map-def %)
     ;; :est-fn (constantly 0)

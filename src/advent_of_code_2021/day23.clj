@@ -50,21 +50,48 @@
 
 (defn loc->piece
   [pieces loc]
-  (get pieces loc))
-
-(defn occupied-locs
-  [pieces]
-  (keys pieces))
+  (if (string? pieces)
+    (get pieces (ix->str-ix loc))
+    (get pieces loc)))
 
 (defn piece-locs
   [pieces]
-  pieces)
+  (if (string? pieces)
+    (->> pieces
+         (map vector str-ixs)
+         (filter #(not= \. (peek %)))
+         (map #(update % 0 str-ix->ix)))
+    pieces))
+
+(defn occupied-locs
+  [pieces]
+  (if (string? pieces)
+    (->> (piece-locs pieces)
+         (map first))
+    (keys pieces)))
+
+(defn replace-in-str [in f from len]
+  (let [before (subs in 0 from)
+        after (subs in (+ from len))
+        being-replaced (subs in from (+ from len))
+        replaced (f being-replaced)]
+    (str before replaced after)))
 
 (defn move-piece
-  [pieces p loc loc']
-  (-> pieces
-      (assoc loc' p)
-      (dissoc loc)))
+  [pieces piece loc loc']
+  (if (string? pieces)
+    (let [p (loc->piece pieces loc)
+          p' (loc->piece pieces loc')]
+      (assert (= p piece))
+      (assert (= p' \.))
+      (-> pieces
+          (replace-in-str (constantly p') (ix->str-ix loc) 1)
+          (replace-in-str (constantly p) (ix->str-ix loc') 1)))
+    (do
+      (assert (= (get pieces loc) piece))
+      (-> pieces
+        (assoc loc' (get pieces loc))
+        (dissoc loc)))))
 
 (defn encode-pieces
   ([pieces]

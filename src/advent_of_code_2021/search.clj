@@ -12,7 +12,7 @@
       :total (+ new-estimate new-actual)}]))
 
 (defn explore-next
-  [{:keys [neighbor-fn est-fn frontier visited found] :as search-state}]
+  [{:keys [neighbor-fn est-fn frontier visited found target] :as search-state}]
   (let [[state state-cost] (peek frontier)
         rest-frontier (when (< 0 (count frontier)) (pop frontier))
         neighbors (remove #(visited (first %)) (neighbor-fn state))
@@ -21,12 +21,15 @@
     (when (= 0 (mod (count visited) 1000))
       (prn {:visited (count visited)
             :state-cost state-cost
-            :frontier (count frontier)}))
+            :frontier (count frontier)
+            :next (peek frontier)}))
+    (when (= 12521 (:actual state-cost))
+      (prn state state-cost))
     (assoc search-state
            :frontier next-frontier
            :visited (conj visited state)
-           :found (into found (filter (fn [[_ cost]]
-                                        (= (:actual cost) (:total cost)))
+           :found (into found (filter (fn [[state _]]
+                                        (= state target))
                                       neighbor-costs)))))
 
 (defn search
@@ -39,9 +42,14 @@
    first))
 
 (defn setup
-  [{:keys [est-fn neighbor-fn initial-states]}]
-  {:frontier (into (priority-map-keyfn :total) (map #(vector % {:actual 0 :est 0 :total 0}) initial-states))
-     :visited #{}
-     :found []
-     :est-fn est-fn
-     :neighbor-fn neighbor-fn})
+  [{:keys [est-fn neighbor-fn initial-states target]}]
+  {:frontier (into (priority-map-keyfn :total)
+                   (map #(vector % {:actual 0
+                                    :est (est-fn %)
+                                    :total (est-fn %)})
+                        initial-states))
+   :visited #{}
+   :found []
+   :est-fn est-fn
+   :neighbor-fn neighbor-fn
+   :target target})

@@ -196,9 +196,9 @@
         doors (->> rooms vals (map :door) set)]
     (for [[loc p] (piece-locs pieces)
           :when (or (= (loc->type loc) :room)
-                    (-> (pieces-in-room map-def pieces p)
-                        (disj p)
-                        empty?))
+                    (->> (pieces-in-room map-def pieces p)
+                         (remove #(= p %))
+                         empty?))
           loc' (into (map #(->room p %)
                           (range 0 room-size))
                      (when (= (loc->type loc) :room)
@@ -213,11 +213,13 @@
 
 (defn estimate-cost
   [map-def pieces]
-  (->> pieces
+  (->> (piece-locs pieces)
        (map (fn [[loc label]]
               (* (piece-cost label)
                  (min (distance map-def (->room label 0) loc)
-                      (distance map-def (->room label 1) loc)))))
+                      (distance map-def (->room label 1) loc)
+                      (distance map-def (->room label 2) loc)
+                      (distance map-def (->room label 3) loc)))))
        (reduce + 0)))
 
 (defn setup-search
@@ -225,7 +227,12 @@
   (search/setup
    {:initial-states [(encode-pieces pieces)]
     :neighbor-fn #(possible-moves map-def %)
-    :est-fn #(estimate-cost map-def %)}))
+    ;; :est-fn #(estimate-cost map-def %)
+    :est-fn (constantly 0)
+    :target (->> pieces
+                 (map (comp #(vector % (loc->label %)) first))
+                 (into {})
+                 encode-pieces)}))
 
 (defn do-1
   ([]
@@ -235,6 +242,7 @@
         add-map-fns
         setup-search
         (iterate search/explore-next)
+        (take 400000)
         (drop-while (comp empty? :found))
         first
         :found
@@ -249,6 +257,25 @@
    nil))
 
 (comment
+  (->> sample
+       add-map-fns
+       setup-search
+       search/explore-next
+       :frontier
+       (map first)
+       (map visualize-pieces)
+       (map print))
+  
+  (->> sample
+       add-map-fns
+       :map-def
+       :path-between
+       (#(% (->room \A 1) (->room \C 0)))
+       (map #(vector (loc->type %) (loc->label %) (loc->ix %)))
+       sort)
+  (print (visualize-pieces (encode-pieces (:pieces sample))))
+  (update "12345" 3 (constantly \2))
+  (occupied-locs (encode-pieces (:pieces (part-2-input sample))))
   (let [a {:1 3 :3 6} b {:3 2 :1 5}] (time (dotimes [_ 100000] (= a b))))
   (let [a [2 5] b [3 6]] (time (dotimes [_ 100000] (= a b))))
   (let [a "12345" b "23456"] (time (dotimes [_ 100000] (= a b))))

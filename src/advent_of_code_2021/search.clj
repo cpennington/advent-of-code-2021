@@ -15,7 +15,7 @@
   [{:keys [neighbor-fn est-fn frontier visited found target] :as search-state}]
   (let [[state state-cost] (peek frontier)
         rest-frontier (when (< 0 (count frontier)) (pop frontier))
-        neighbors (remove #(visited (first %)) (neighbor-fn state))
+        neighbors (remove #(contains? visited (first %)) (neighbor-fn state))
         neighbor-costs (into {} (map #(state-cost* est-fn state-cost %) neighbors))
         next-frontier (merge-with #(min-key :actual %1 %2) rest-frontier neighbor-costs)]
     (when (= 0 (mod (count visited) 1000))
@@ -27,7 +27,7 @@
       (prn state state-cost))
     (assoc search-state
            :frontier next-frontier
-           :visited (conj visited state)
+           :visited (assoc visited state (:actual state-cost))
            :found (into found (filter (fn [[state _]]
                                         (= state target))
                                       neighbor-costs)))))
@@ -48,8 +48,9 @@
                                     :est (est-fn %)
                                     :total (est-fn %)})
                         initial-states))
-   :visited #{}
+   :visited {}
    :found []
    :est-fn est-fn
    :neighbor-fn neighbor-fn
    :target target})
+

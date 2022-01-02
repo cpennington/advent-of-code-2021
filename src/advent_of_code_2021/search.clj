@@ -18,13 +18,11 @@
         neighbors (remove #(contains? visited (first %)) (neighbor-fn state))
         neighbor-costs (into {} (map #(state-cost* est-fn state-cost %) neighbors))
         next-frontier (merge-with #(min-key :actual %1 %2) rest-frontier neighbor-costs)]
-    (when (= 0 (mod (count visited) 1000))
+    (when (= 0 (mod (count visited) 10000))
       (prn {:visited (count visited)
             :state-cost state-cost
             :frontier (count frontier)
             :next (peek frontier)}))
-    (when (= 12521 (:actual state-cost))
-      (prn state state-cost))
     (assoc search-state
            :frontier next-frontier
            :visited (assoc visited state (:actual state-cost))
@@ -36,13 +34,15 @@
   [search-state]
   (->> search-state
    (iterate explore-next)
-   (drop-while (comp empty? :found))
+   (drop-while #(or (-> % -> :found empty?)
+                    (-> % :frontier empty? not)))
    first
    :found
    first))
 
 (defn setup
   [{:keys [est-fn neighbor-fn initial-states target]}]
+  (prn est-fn)
   {:frontier (into (priority-map-keyfn :total)
                    (map #(vector % {:actual 0
                                     :est (est-fn %)

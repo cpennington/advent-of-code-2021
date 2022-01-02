@@ -35,7 +35,7 @@
 (defn loc->label
   [loc]
   (-> (- loc)
-      (Math/floorDiv offset-mult)
+      (quot offset-mult)
       (+ (int \A))
       char))
 
@@ -43,24 +43,25 @@
   [ix]
   (+ ix 15))
 
-(def str-ixs (range 27))
+(def str-ixs (into [] (range 27)))
 (defn str-ix->ix
   [str-ix]
   (- str-ix 15))
+
+(def ixs (mapv str-ix->ix str-ixs))
 
 (defn loc->piece
   [pieces loc]
   (if (string? pieces)
     (get pieces (ix->str-ix loc))
-    (get pieces loc)))
+    (get pieces loc \.)))
 
 (defn piece-locs
   [pieces]
   (if (string? pieces)
     (->> pieces
-         (map vector str-ixs)
-         (filter #(not= \. (peek %)))
-         (map #(update % 0 str-ix->ix)))
+         (map vector ixs)
+         (filter #(not= \. (peek %))))
     pieces))
 
 (defn occupied-locs
@@ -106,7 +107,7 @@
 
 (defn visualize-pieces
   [pieces]
-  (let [hallway (apply str (map (comp loc->piece ->hallway) (range 11)))]
+  (let [hallway (apply str (map (comp (partial loc->piece pieces) ->hallway) (range 11)))]
     (str hallway "\n"
          "  " (loc->piece pieces (->room \A 0))
          " "  (loc->piece pieces (->room \B 0))
@@ -238,15 +239,14 @@
       range
       (map #(->room room-label %))
       (map #(loc->piece pieces %))
-      (remove nil?)
+      (remove #{\.})
       set))
 
 (defn path-open?
   [{:keys [path-between]} pieces a b]
   (let [path (-> (path-between a b)
-                 (disj a))
-        occupied (occupied-locs pieces)]
-    (every? #(not (contains? path %)) occupied)))
+                 (disj a))]
+    (every? #(= (loc->piece pieces %) \.) path)))
 
 (defn distance
   [{:keys [path-between]} a b]
@@ -259,46 +259,71 @@
 (defn possible-moves
   [{:keys [rooms hall-size] :as map-def} pieces]
   (let [room-size (-> rooms (#(get % \A)) :size)
-        doors (->> rooms vals (map :door) set)]
+        doors (->> rooms vals (map :door) set)
+        room-occupants (into {} (map #(vector % (pieces-in-room map-def pieces %))
+                                     [\A \B \C \D]))
+        ;; _ (prn room-occupants)
+        ]
     (for [[loc p] (piece-locs pieces)
-          :when (or (= (loc->type loc) :room)
-                    (->> (pieces-in-room map-def pieces p)
-                         (remove #(= p %))
-                         empty?))
-          loc' (into (map #(->room p %)
-                          (range 0 room-size))
+          :let [own-room-clean (->> (get room-occupants p)
+                                    (remove #(= p %))
+                                    empty?)
+                ;; _ (prn p own-room-clean (->> room-size
+                ;;                              (range 0)
+                ;;                              (map #(->room p %))
+                ;;                              (filter #(= \. (loc->piece pieces %)))
+                ;;                              last
+                ;;                              vector))
+                ]
+          ;; Don't move if the current piece is in a clean room
+          :when (not (and (= :room (loc->type loc))
+                          (= p (loc->label loc))
+                          own-room-clean))
+          loc' (into (if own-room-clean
+                       ;; Move into the deepest spot in own clean room
+                       (->> room-size
+                            (range 0)
+                            (map #(->room p %))
+                            (filter #(= \. (loc->piece pieces %)))
+                            last
+                            vector)
+                       [])
                      (when (= (loc->type loc) :room)
                        (->> hall-size
                             range
                             (remove doors)
                             (map #(->hallway %)))))
+          ;; :let [_ (prn loc loc' (loc->type loc') (loc->label loc') (loc->ix loc') (not= loc loc') (path-open? map-def pieces loc loc'))]
           :when (and (not= loc loc')
                      (path-open? map-def pieces loc loc'))]
       [(move-piece pieces p loc loc')
        (path-cost map-def p loc loc')])))
 
 (defn estimate-cost
-  [map-def pieces]
-  (->> (piece-locs pieces)
-       (map (fn [[loc label]]
-              (* (piece-cost label)
-                 (min (distance map-def (->room label 0) loc)
-                      (distance map-def (->room label 1) loc)
-                      (distance map-def (->room label 2) loc)
-                      (distance map-def (->room label 3) loc)))))
-       (reduce + 0)))
+  [{:keys [rooms hall-size] :as map-def} pieces]
+  (let [room-size (-> rooms (#(get % \A)) :size)
+        doors (->> rooms vals (map :door) set)
+        room-occupants (into {} (map #(vector % (pieces-in-room map-def pieces %))
+                                     [\A \B \C \D]))]
+    (->> (piece-locs pieces)
+         (map (fn [[loc piece]]
+                (if (= piece (loc->label loc))
+                  0
+                  (* (piece-cost piece)
+                     (distance map-def (->room piece 0) loc)))))
+         (reduce + 0))))
 
 (defn setup-search
-  [{:keys [map-def pieces]}]
+  [{:keys [map-def pieces string-state?]}]
   (search/setup
-   {:initial-states [(encode-pieces pieces)]
+   {:initial-states [(encode-pieces pieces string-state?)]
     :neighbor-fn #(possible-moves map-def %)
-    :est-fn #(estimate-cost map-def %)
-    ;; :est-fn (constantly 0)
+    ;; :est-fn #(estimate-cost map-def %)
+    :est-fn (constantly 0)
     :target (->> pieces
                  (map (comp #(vector % (loc->label %)) first))
                  (into {})
-                 encode-pieces)}))
+                 (#(encode-pieces % string-state?)))}))
 
 (defn do-1
   ([]
@@ -320,14 +345,25 @@
   ([]
    (do-2 input))
   ([input]
-   nil))
+   (->> input
+        part-2-input
+        add-map-fns
+        setup-search
+        (iterate search/explore-next)
+        (take 400000)
+        (drop-while (comp empty? :found))
+        first
+        :found
+        first
+        peek
+        :total)))
 
 (comment
   (->> sample
        add-map-fns
        setup-search
        (iterate search/explore-next)
-       (drop 4000)
+       (drop 10000)
        first
        :visited
        (group-by peek)
@@ -341,25 +377,51 @@
        (#(% (->room \A 1) (->room \C 0)))
        (map #(vector (loc->type %) (loc->label %) (loc->ix %)))
        sort)
-  (sort [[0 1] [443 1] [3441 1] [240 3] [229 1] [20 4] [3460 2] [224 1] [463 2] [60 2] [27 1] [24 1] [260 2] [3464 1] [221 2] [464 1] [264 1] [50 1] [21 2] [460 2] [241 2] [3463 2] [420 1] [263 2] [40 6] [5460 1] [3440 3] [223 2] [3420 1] [41 4] [3474 1] [461 1] [243 3] [43 5] [29 1] [44 3] [5440 1] [465 1] [3444 1] [227 1] [220 3] [25 1] [261 1] [440 3] [444 1] [23 2] [230 1] [47 1] [3471 1] [200 1] [3473 2] [244 2] [441 1] [30 2] [3461 1] [3470 1] [3443 1] [49 1]])
-  (sort [[0 1] [5480 1] [3484 1] [443 1] [3441 1] [240 3] [20 4] [3460 2] [224 1] [463 2] [27 1] [24 1] [260 1] [3464 1] [3510 1] [221 2] [464 1] [264 1] [21 2] [460 1] [3481 1] [241 2] [3463 2] [5490 1] [420 1] [263 2] [40 5] [5460 1] [3440 2] [223 2] [3511 1] [5511 1] [3420 1] [5484 1] [3490 1] [41 4] [3491 1] [461 1] [243 3] [5510 1] [43 5] [44 3] [5440 1] [5491 1] [465 1] [3444 1] [5470 1] [220 3] [25 1] [261 1] [440 2] [5481 1] [444 1] [23 2] [47 1] [3471 1] [200 1] [244 2] [441 1] [3480 1] [5483 1] [3461 1] [3470 2] [3483 1] [3443 1]])
   (print (visualize-pieces (encode-pieces (:pieces sample))))
   (update "12345" 3 (constantly \2))
   (occupied-locs (encode-pieces (:pieces (part-2-input sample))))
-  (let [a {:1 3 :3 6} b {:3 2 :1 5}] (time (dotimes [_ 100000] (= a b))))
+  (let [a (encode-pieces (:pieces sample) true)
+        b (add-map-fns sample)
+        c (->room \A 1)
+        d (->room \D 1)]
+    (time (dotimes [_ 100] ((get-in b [:map-def :path-between]) c d))))
   (let [a [2 5] b [3 6]] (time (dotimes [_ 100000] (= a b))))
   (let [a "12345" b "23456"] (time (dotimes [_ 100000] (= a b))))
   (require '[clj-async-profiler.core :as prof])
+
+  (let [search-state (->> sample
+                          part-2-input
+                          add-map-fns
+                          setup-search)
+        pieces {(->room \B 0) \B
+                (->room \D 2) \D
+                (->room \D 1) \D
+                (->room \A 3) \A
+                (->room \C 2) \C
+                (->room \C 1) \C
+                (->room \B 3) \B
+                (->room \D 3) \D
+                (->room \B 1) \B
+                (->room \B 2) \B
+                (->room \A 2) \A
+                (->room \C 3) \C
+                (->room \D 0) \D
+                (->room \A 1) \A
+                (->room \C 0) \C
+                (->room \A 0) \A}]
+    (print (visualize-pieces pieces))
+    (map (comp print visualize-pieces first) ((:neighbor-fn search-state) pieces)))
+
   (prof/serve-files 8080)
-  (prof/profile (time (do-1 sample)))
-  (prof/profile (->> input
+  (prof/profile (time (do-2)))
+  (prof/profile (->> sample
                      part-2-input
                      add-map-fns
                      setup-search
       ;; :neighbor-fn
       ;; (#(% (:initial-states (first (setup-search sample)))))
                      (iterate search/explore-next)
-                     (take 200000)
+                    ;;  (take 1000000)
                     ;;  (drop 10000)
                      (drop-while (comp empty? :found))
                      first

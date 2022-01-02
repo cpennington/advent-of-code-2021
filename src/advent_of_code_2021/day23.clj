@@ -261,20 +261,11 @@
   (let [room-size (-> rooms (#(get % \A)) :size)
         doors (->> rooms vals (map :door) set)
         room-occupants (into {} (map #(vector % (pieces-in-room map-def pieces %))
-                                     [\A \B \C \D]))
-        ;; _ (prn room-occupants)
-        ]
+                                     [\A \B \C \D]))]
     (for [[loc p] (piece-locs pieces)
           :let [own-room-clean (->> (get room-occupants p)
                                     (remove #(= p %))
-                                    empty?)
-                ;; _ (prn p own-room-clean (->> room-size
-                ;;                              (range 0)
-                ;;                              (map #(->room p %))
-                ;;                              (filter #(= \. (loc->piece pieces %)))
-                ;;                              last
-                ;;                              vector))
-                ]
+                                    empty?)]
           ;; Don't move if the current piece is in a clean room
           :when (not (and (= :room (loc->type loc))
                           (= p (loc->label loc))
@@ -293,7 +284,6 @@
                             range
                             (remove doors)
                             (map #(->hallway %)))))
-          ;; :let [_ (prn loc loc' (loc->type loc') (loc->label loc') (loc->ix loc') (not= loc loc') (path-open? map-def pieces loc loc'))]
           :when (and (not= loc loc')
                      (path-open? map-def pieces loc loc'))]
       [(move-piece pieces p loc loc')
@@ -318,8 +308,8 @@
   (search/setup
    {:initial-states [(encode-pieces pieces string-state?)]
     :neighbor-fn #(possible-moves map-def %)
-    ;; :est-fn #(estimate-cost map-def %)
-    :est-fn (constantly 0)
+    :est-fn #(estimate-cost map-def %)
+    ;; :est-fn (constantly 0)
     :target (->> pieces
                  (map (comp #(vector % (loc->label %)) first))
                  (into {})
